@@ -4,6 +4,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
 
+public class BlockPos
+{
+    public List<GyroVector> vector = new List<GyroVector>();
+}
+
 public class Player : MonoBehaviour {
     public const float HEAD_BOB_FREQ = 12.0f;
     public const float HEAD_BOB_MAX = 0.008f;
@@ -62,11 +67,12 @@ public class Player : MonoBehaviour {
     private float projTransition;
     private float projNew;
     private static readonly int projInterpID = Shader.PropertyToID("_Proj");
+    [SerializeField] GameObject block;
     [System.NonSerialized] public float projInterp;
     [System.NonSerialized] public Vector3 inputDelta;
     [System.NonSerialized] public Vector3 outputDelta;
     [System.NonSerialized] public bool isPushing = false;
-    [System.NonSerialized] public bool onPlatform = false;
+    [System.NonSerialized] public bool onPlatform = true;
     [System.NonSerialized] public bool overrideCamHeight = false;
     [System.NonSerialized] public bool disableSmoothLook = false;
     public Vector3 inputDeltaXZ { get { return new Vector3(inputDelta.x, 0.0f, inputDelta.z); } }
@@ -88,23 +94,35 @@ public class Player : MonoBehaviour {
             transform.localPosition -= origCamPos;
         }
 
+      if(VarSave.ExistenceVar("PlayerPos"))  HyperObject.worldGV = JsonUtility.FromJson<GyroVector>(VarSave.GetString("PlayerPos"));
+        if (VarSave.ExistenceVar("BlockPos"))
+        {
+            BlockPos bp = JsonUtility.FromJson<BlockPos>(VarSave.GetString("BlockPos"));
+            for (int i = 0; i < bp.vector.Count; i++)
+            {
+                HyperObject ho = Instantiate(block).GetComponent<HyperObject>();
+                ho.localGV = bp.vector[i];
+            }
+        }
         //World builders should have earlier execution than player, so HM statics
         //should already be setup by this point.
         height *= HM.KLEIN_V / 0.5774f;
 
         //Find map in the scene
-        map = FindObjectOfType<Map>(true);
+        map = FindFirstObjectByType<Map>();
 
         //Update the field of view based on preferences
         UpdateFOV();
     }
 
     void Start() {
+
         //Initialize identity rotations
         smoothRotationX = targetRotationX = rotationX = 0.0f;
         smoothRotationY = targetRotationY = rotationY = 0.0f;
 
         //Other initialization
+        Cursor.lockState = CursorLockMode.Locked;
         headBobState = 0.0f;
         velocity = Vector3.zero;
         projNew = projCur;
@@ -153,6 +171,47 @@ public class Player : MonoBehaviour {
     }
 
     void Update() {
+
+        if (InputManager.GetKeyDown("FlyButton"))
+        {
+            freeFly = !freeFly;
+        }
+        if (InputManager.GetKeyDown("Interact"))
+        {
+           HyperObject ho = Instantiate(block).GetComponent<HyperObject>();
+            ho.localGV = -HyperObject.worldGV;
+        }
+        if (InputManager.GetKeyDown("Save"))
+        {
+            BlockPos bp = new BlockPos();
+            Tag[] Blocks = FindObjectsByType<Tag>(FindObjectsSortMode.None);
+
+            for (int i=0;i<Blocks.Length;i++)
+            {
+                HyperObject ho;
+              ho = Blocks[i].GetComponent<HyperObject>();
+
+                bp.vector.Add(ho.localGV);
+            }
+            VarSave.SetString("BlockPos", JsonUtility.ToJson(bp));
+            VarSave.SetString("PlayerPos", JsonUtility.ToJson(HyperObject.worldGV));
+        }
+        if (InputManager.GetKeyDown("Load"))
+        {
+            Tag[] Blocks = FindObjectsByType<Tag>(FindObjectsSortMode.None);
+
+            for (int i = 0; i < Blocks.Length; i++)
+            {
+                Blocks[i].Destroy();
+            }
+            BlockPos bp = JsonUtility.FromJson<BlockPos>(VarSave.GetString("BlockPos"));
+            for (int i = 0; i < bp.vector.Count; i++)
+            {
+                HyperObject ho = Instantiate(block).GetComponent<HyperObject>();
+                ho.localGV = bp.vector[i];
+            }
+            HyperObject.worldGV = JsonUtility.FromJson<GyroVector>(VarSave.GetString("PlayerPos"));
+        }
         if (IsLocked()) {
             //Update raw rotations
             Vector2 lookXY = InputManager.GetAxes("Look", false, UnityEngine.XR.XRSettings.enabled);
@@ -572,7 +631,7 @@ public class Player : MonoBehaviour {
             hit.displacement += bodyHit.displacement;
             hit.maxSinY = Mathf.Max(hit.maxSinY, bodyHit.maxSinY);
             hit.maxSinYGround = Mathf.Max(hit.maxSinYGround, bodyHit.maxSinYGround);
-
+            if (bodyHit.ho) if (bodyHit.ho.tag == "IsTrigger") HyperBolicTrigger._CurentToNameTrigger = bodyHit.ho.GetComponent<HyperBolicTrigger>()._NameTrigger;
             //If body is centered on the head, then the player is just a big sphere,
             //and we only need one collision check.
             if (headCenter) {

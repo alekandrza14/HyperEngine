@@ -68,6 +68,7 @@ public class Map : MonoBehaviour {
         return takeMapOut;
     }
 
+
     public void TakeMapOut(bool takeOut) {
         //Toggle if map is shown
         takeMapOut = takeOut;

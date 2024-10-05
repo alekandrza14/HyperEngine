@@ -6,6 +6,7 @@ public class PlayerShadow : MonoBehaviour
 {
     private Vector3 origScale;
     private HyperObject ho;
+    public Material _object;
 
     void Awake() {
         ho = GetComponent<HyperObject>();
@@ -13,7 +14,7 @@ public class PlayerShadow : MonoBehaviour
     }
 
     private void Start() {
-        transform.localScale = origScale * FindObjectOfType<Player>().ScaleFactor();
+        transform.localScale = origScale * FindFirstObjectByType<Player>().ScaleFactor();
     }
 
     void Update() {

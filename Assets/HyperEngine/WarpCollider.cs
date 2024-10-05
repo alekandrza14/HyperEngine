@@ -41,6 +41,7 @@ public class WarpCollider : MonoBehaviour {
     public Plane[] boundingPlanes = new Plane[0];
     public Mesh[] boundingMeshes = new Mesh[0];
     public bool removeFloorTriangles = true;
+    public bool IsTrigger = false;
 
     private bool hasStarted = false;
     private HyperObject ho;
@@ -135,6 +136,8 @@ public class WarpCollider : MonoBehaviour {
         if (removeFloorTriangles && collider.p1.y <= 0.0f && collider.p2.y <= 0.0f && collider.p3.y <= 0.0f) {
             return;
         }
+
+      //  if (IsTrigger) Debug.Log("con");
         colliders.Add(collider);
     }
 
@@ -159,6 +162,7 @@ public class WarpCollider : MonoBehaviour {
     }
 
     public WCollider.Hit Collide(Vector3 p, float r) {
+      //  if (IsTrigger) Debug.Log("con");
         return WCollider.Collide(p, r, groupIx, groupIx + 1);
     }
 
